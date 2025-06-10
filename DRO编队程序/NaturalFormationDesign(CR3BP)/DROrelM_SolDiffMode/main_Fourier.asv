@@ -1,0 +1,96 @@
+%% 三体轨道中的相对运动
+% 2021-6-22
+% by Yang Chihang
+% email: ychhtl@foxmail.com
+% close all
+clear
+addpath('../subF_eom(CR3BP)')
+
+format longg
+format compact
+
+%% 常数与变量
+load('FloquetEig12.mat')
+opts = odeset('RelTol',1e-13,'AbsTol',1e-20);
+
+%% 相对运动积分，计算与坐标转化
+
+dt = 1*para.T0; % 积分时间
+length_t = 2000;
+t_sample = linspace(0,dt,length_t);
+t_sample_day = t_sample*para.T_norma_day;
+
+alpha_1 = atan2(imag(Meigva_diag(1)),real(Meigva_diag(1)));
+% 标称轨道及相对运动 p1_real 的积分
+sol1 = ode113(@(t,x)eom_rel3b(t,x,para.mu),[0 dt], [x0_DRO_M_3d, EigenVector.p1_real'], opts);
+sol1_sample = deval(sol1,t_sample);
+abs_motion_M = sol1_sample(1:6,:);
+rel_motion_L_linear_1 = sol1_sample(7:12,:);
+% 标称轨道及相对运动 p1_imag 的积分
+sol2 = ode113(@(t,x)eom_rel3b(t,x,para.mu),[0 dt], [x0_DRO_M_3d, EigenVector.p1_imag'], opts);
+sol2_sample = deval(sol2,t_sample);
+rel_motion_L_linear_2 = sol2_sample(7:12,:);
+
+% e_1
+e1_hat = cos(-alpha_1*t_sample/para.T0).*rel_motion_L_linear_1 + sin(-alpha_1*t_sample/para.T0).*rel_motion_L_linear_2;
+e2_hat = -sin(-alpha_1*t_sample/para.T0).*rel_motion_L_linear_1 + cos(-alpha_1*t_sample/para.T0).*rel_motion_L_linear_2;
+
+
+%% 画图
+color1 = [224, 26, 255]/255;
+color2 = [0, 255, 255]/255;
+color_diff = (color1-color2)-sign(color1-color2)*1e-6;
+num_ii = 10;
+theta1_all = linspace(0,2*pi,num_ii);
+figure(1); hold off
+for ii_loop = 1:length(theta1_all)
+    theta1_temp = theta1_all(ii_loop);
+    e1_InvCircle = cos(theta1_temp)*e1_hat + sin(theta1_temp)*e2_hat;
+    plot(e1_InvCircle(1,:),e1_InvCircle(2,:),'Color',color2+color_diff*ii_loop/num_ii,'LineWidth',1.5)
+    axis equal; hold on; grid on
+end
+% map = [color2; color2+color_diff/4; color2+color_diff/2; color2+3*color_diff/4; color1];
+map = color2+linspace(0,1,64)'*color_diff;
+colormap(map);
+b = colorbar;
+b.YTick = [0,pi/2,pi,3*pi/2,2*pi];
+b.YTickLabel = {'0','\pi/2','\pi','3\pi/2','2\pi'};
+b.Limits = [0,2*pi];
+b.Label.String = '\theta_1';
+b.Label.FontSize = 13;
+caxis([0 2*pi]); % 更改颜色值的上下限
+title('Invariant Circles with constant \theta_1')
+set(gca,'FontSize',13)
+xlabel('x'); ylabel('y');
+
+%% 
+color1 = [224, 26, 255]/255;
+color2 = [0, 255, 255]/255;
+color_diff = (color1-color2)-sign(color1-color2)*1e-6;
+num_ii = 10;
+theta0_all = linspace(0,2*pi,num_ii);
+theta1_sam = linspace(0,2*pi,length_t);
+figure(1); hold off
+for ii_loop = 1:length(theta0_all)
+    theta0_temp = theta0_all(ii_loop);
+    t_temp = theta0_temp*para.T0/alpha_1;
+    rel_motion1_temp1 = deval(sol1,t_temp); rel_motion1_temp2 = deval(sol2,t_temp);
+    e1_hat_temp = cos(-theta0_temp).*rel_motion1_temp1(7:12) + sin(-theta0_temp).*rel_motion1_temp2(7:12);
+    e2_hat_temp = cos(-theta0_temp).*rel_motion2_temp1(7:12) + sin(-theta0_temp).*re2_motion_temp2(7:12);
+    e1_InvCircle = cos(theta1_sam)*e1_hat_temp + sin(theta1_sam)*e2_hat;
+    plot(e1_InvCircle(1,:),e1_InvCircle(2,:),'Color',color2+color_diff*ii_loop/num_ii,'LineWidth',1.5)
+    axis equal; hold on; grid on
+end
+% map = [color2; color2+color_diff/4; color2+color_diff/2; color2+3*color_diff/4; color1];
+map = color2+linspace(0,1,64)'*color_diff;
+colormap(map);
+b = colorbar;
+b.YTick = [0,pi/2,pi,3*pi/2,2*pi];
+b.YTickLabel = {'0','\pi/2','\pi','3\pi/2','2\pi'};
+b.Limits = [0,2*pi];
+b.Label.String = '\theta_1';
+b.Label.FontSize = 13;
+caxis([0 2*pi]); % 更改颜色值的上下限
+title('Invariant Circles with constant \theta_1')
+set(gca,'FontSize',13)
+xlabel('x'); ylabel('y');

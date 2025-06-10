@@ -1,0 +1,7 @@
+文件夹DROrelM_Solution包含了DRO相对运动解构建、计算与画图程序：
+1.main_DROrel_FloquetTheory：基于Floquet theory计算DRO相对运动半解析解。
+2.main_DROrel_Fourier：基于Floquet半解析解计算DRO的傅里叶形式解析通解。
+3.main_FourierSol_DiffOrder：分析不同阶次的傅里叶级数的计算量和精度。
+4.plot_BoundedMode：基于傅里叶形式解析通解，计算并画出三个相对运动模态在月心旋转系LVLH与地心惯性系LVLH下的轨迹
+
+文件夹subF_eom(CR3BP)则包含了以上程序调用的子程序

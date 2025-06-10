@@ -1,0 +1,11 @@
+LIBRARY ephEclip_mex.mexw64
+EXPORTS
+mexFunction
+emlrtMexFcnProperties
+ephEclip
+emxEnsureCapacity
+emxFree_real_T
+emxInit_real_T
+ephEclip_initialize
+ephEclip_terminate
+ephEclip_atexit

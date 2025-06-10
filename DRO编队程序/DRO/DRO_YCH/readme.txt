@@ -1,0 +1,6 @@
+DRO轨道计算程序主体是由陈冠华编写的，后来我又稍作修改
+你用到的两个主程序是：
+expPoincareSection.m 以及 expDiffCorr_continuationJ2.m
+首先要用expPoincareSection.m画特定能量J的庞加莱截面图，在庞加莱截面图中选取合适的初值，代至expDiffCorr_continuationJ2.m，通过延拓求得一批DRO轨道。（在expDiffCorr_continuationJ2.m中已经给出一些DRO轨道的初值）
+
+另，文件夹中的mat文件是我之前算出来的一些DRO轨道。且mainOptimizeDRO.m可以生成指定周期的DRO轨道。

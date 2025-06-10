@@ -1,0 +1,138 @@
+%% CR3BP下DRO的傅里叶形式通解（不同模态的有界解）
+% 2021-8-30
+% by Yang Chihang
+% email: ychhtl@foxmail.com
+close all
+clear
+addpath('../../subF_eom(CR3BP)')
+
+format longg
+format compact
+
+%% 常数与变量
+% flag = '_resonance';
+flag = '4-2';
+% flag = '';
+load(['FloquetEig_all',flag,'.mat'])
+
+opts = odeset('RelTol',1e-13,'AbsTol',1e-20);
+
+num = size(x0_DRO_M_3d_all,1);
+error_all = zeros(num,5);
+para(num).x0_DRO = [];
+coe(num).N = [];
+parfor i_index = 1:num
+% for i_index = 74
+    disp(num2str(i_index))
+    para(i_index).x0_DRO = x0_DRO_M_3d_all(i_index,:);
+    para(i_index).T0 = J_period_all(i_index,2)*2*pi;
+    %% 相对运动积分
+
+    dt = 1*para(i_index).T0; % 积分时间
+    length_t = 2000;
+    t_sample = linspace(0,dt,length_t);
+    t_sample_day = t_sample*con.T_norma_day;
+
+    % 周期轨道
+    % 标称轨道及相对运动 p3 的积分
+    sol3 = ode113(@(t,x)eom_rel3b(t,x,con.mu),[0 dt], [para(i_index).x0_DRO, EigenVector_all(i_index).p3'], opts);
+    sol3_sample = deval(sol3,t_sample);
+    e3_hat = sol3_sample(7:12,:);
+
+    % 平面拟周期
+    % 这里采用第二个特征值，因为其虚部是正的，如此可以确保alpha大于0
+    alpha1 = atan2(imag(Meigva_all(i_index,2)),real(Meigva_all(i_index,2)));
+    para(i_index).T1 = 2*pi*para(i_index).T0/alpha1;
+    % 标称轨道及相对运动 p1_real 的积分
+    sol1 = ode113(@(t,x)eom_rel3b(t,x,con.mu),[0 dt], [para(i_index).x0_DRO, EigenVector_all(i_index).p1_real'], opts);
+    sol1_sample = deval(sol1,t_sample);
+    abs_motion_M = sol1_sample(1:6,:);
+    rel_motion_L_linear_1 = sol1_sample(7:12,:);
+    % 标称轨道及相对运动 p1_imag 的积分
+    sol2 = ode113(@(t,x)eom_rel3b(t,x,con.mu),[0 dt], [para(i_index).x0_DRO, EigenVector_all(i_index).p1_imag'], opts);
+    sol2_sample = deval(sol2,t_sample);
+    rel_motion_L_linear_2 = sol2_sample(7:12,:);
+
+    % e_1
+    e1_hat = cos(-alpha1*t_sample/para(i_index).T0).*rel_motion_L_linear_1 + sin(-alpha1*t_sample/para(i_index).T0).*rel_motion_L_linear_2;
+    e2_hat = -sin(-alpha1*t_sample/para(i_index).T0).*rel_motion_L_linear_1 + cos(-alpha1*t_sample/para(i_index).T0).*rel_motion_L_linear_2;
+
+    % 法向拟周期
+    % 这里采用第六个特征值，因为其虚部是正的，如此可以确保alpha大于0
+    alpha2 = atan2(imag(Meigva_all(i_index,6)),real(Meigva_all(i_index,6)));
+    para(i_index).T2 = 2*pi*para(i_index).T0/alpha2;
+    % 标称轨道及相对运动 p5_real 的积分
+    sol5 = ode113(@(t,x)eom_rel3b(t,x,con.mu),[0 dt], [para(i_index).x0_DRO, EigenVector_all(i_index).p5_real'], opts);
+    sol5_sample = deval(sol5,t_sample);
+    rel_motion_L_linear_5 = sol5_sample(7:12,:);
+    % 标称轨道及相对运动 p5_imag 的积分
+    sol6 = ode113(@(t,x)eom_rel3b(t,x,con.mu),[0 dt], [para(i_index).x0_DRO, EigenVector_all(i_index).p5_imag'], opts);
+    sol6_sample = deval(sol6,t_sample);
+    rel_motion_L_linear_6 = sol6_sample(7:12,:);
+
+    % e_5
+    e5_hat = cos(-alpha2*t_sample/para(i_index).T0).*rel_motion_L_linear_5 + sin(-alpha2*t_sample/para(i_index).T0).*rel_motion_L_linear_6;
+    e6_hat = -sin(-alpha2*t_sample/para(i_index).T0).*rel_motion_L_linear_5 + cos(-alpha2*t_sample/para(i_index).T0).*rel_motion_L_linear_6;
+
+    %% 用傅里叶变换拟合平面内拟周期
+    % e1_hat、e2_hat
+    coe(i_index).N = 100;
+    t_sample_fit = linspace(0,para(i_index).T0*(coe(i_index).N-1)/coe(i_index).N,coe(i_index).N);
+
+    sol1_sample_fit = deval(sol1,t_sample_fit);
+    sol2_sample_fit = deval(sol2,t_sample_fit); 
+
+    e1_hat_fitsam = cos(-alpha1*t_sample_fit/para(i_index).T0).*sol1_sample_fit(7:12,:) + sin(-alpha1*t_sample_fit/para(i_index).T0).*sol2_sample_fit(7:12,:);
+    e2_hat_fitsam = -sin(-alpha1*t_sample_fit/para(i_index).T0).*sol1_sample_fit(7:12,:) + cos(-alpha1*t_sample_fit/para(i_index).T0).*sol2_sample_fit(7:12,:);
+    e1_hat_fitsam = e1_hat_fitsam'; e2_hat_fitsam = e2_hat_fitsam';
+
+    coe(i_index).c1_e1hat = DFTmatrix(coe(i_index).N)*e1_hat_fitsam;
+    coe(i_index).c1_e2hat = DFTmatrix(coe(i_index).N)*e2_hat_fitsam;
+
+    theta0_all_fit = linspace(0,2*pi,length_t);
+    % theta_all_fit = t_sample_fit*2*pi/para(i_index).T0;
+    e1_refit = real(iDFTmatrix_theta(coe(i_index).N,theta0_all_fit) * coe(i_index).c1_e1hat);
+    e2_refit = real(iDFTmatrix_theta(coe(i_index).N,theta0_all_fit) * coe(i_index).c1_e2hat);
+
+    % error
+    error1 = e1_refit-e1_hat'; 
+    error2 = e2_refit-e2_hat';
+
+
+    %% 用傅里叶变换拟合平面内周期轨道
+    % e3_hat
+    sol3_sample_fit = deval(sol3,t_sample_fit);
+    e3_hat_fitsam = sol3_sample_fit(7:12,:)';
+
+    coe(i_index).c1_e3hat = DFTmatrix(coe(i_index).N)*e3_hat_fitsam;
+
+    theta0_all_fit = linspace(0,2*pi,length_t);
+    e3_refit = real(iDFTmatrix_theta(coe(i_index).N,theta0_all_fit) * coe(i_index).c1_e3hat);
+
+    error3 = e3_refit-e3_hat';
+
+    %% 用傅里叶变换拟合平面外拟周期
+    % e5_hat与e6_hat
+    sol5_sample_fit = deval(sol5,t_sample_fit);
+    sol6_sample_fit = deval(sol6,t_sample_fit); 
+
+    e5_hat_fitsam = cos(-alpha2*t_sample_fit/para(i_index).T0).*sol5_sample_fit(7:12,:) + sin(-alpha2*t_sample_fit/para(i_index).T0).*sol6_sample_fit(7:12,:);
+    e6_hat_fitsam = -sin(-alpha2*t_sample_fit/para(i_index).T0).*sol5_sample_fit(7:12,:) + cos(-alpha2*t_sample_fit/para(i_index).T0).*sol6_sample_fit(7:12,:);
+    e5_hat_fitsam = e5_hat_fitsam'; e6_hat_fitsam = e6_hat_fitsam';
+
+    coe(i_index).c1_e5hat = DFTmatrix(coe(i_index).N)*e5_hat_fitsam;
+    coe(i_index).c1_e6hat = DFTmatrix(coe(i_index).N)*e6_hat_fitsam;
+
+    theta0_all_fit = linspace(0,2*pi,length_t);
+    e5_refit = real(iDFTmatrix_theta(coe(i_index).N,theta0_all_fit) * coe(i_index).c1_e5hat);
+    e6_refit = real(iDFTmatrix_theta(coe(i_index).N,theta0_all_fit) * coe(i_index).c1_e6hat);
+
+    % error
+    error5 = e5_refit-e5_hat';
+    error6 = e6_refit-e6_hat';
+
+    error_all(i_index,:) = [max(sqrt(sum(error1(:,[1,2,4,5]).^2,2))),max(sqrt(sum(error2(:,[1,2,4,5]).^2,2))),...
+        max(sqrt(sum(error3(:,[1,2,4,5]).^2,2))),max(sqrt(sum(error5(:,[3,6]).^2,2))), max(sqrt(sum(error6(:,[3,6]).^2,2)))];
+end
+%% 保存周期解
+save(['../../subF_eom(CR3BP)/generalSolFFT_all',flag], 'para', 'con', 'coe')
